@@ -16,7 +16,7 @@ class BudgetyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.teal,
+          seedColor: Colors.green,
           brightness: Brightness.light,
         ),
         useMaterial3: true,
