@@ -1,0 +1,28 @@
+name: budgety
+description: "Eine moderne Haushaltsbuch App."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+  # Zustandsmanagement
+  flutter_riverpod: ^2.4.9
+  # Formatierung von Währungen und Daten
+  intl: ^0.19.0
+  # Eindeutige IDs für Transaktionen
+  uuid: ^4.2.2
+  # Lokale Speicherung
+  shared_preferences: ^2.2.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
