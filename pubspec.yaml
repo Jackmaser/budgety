@@ -1,6 +1,7 @@
 name: budgety
-description: "Eine moderne Haushaltsbuch App."
+description: "Eine Haushaltsbuch-App zur Verwaltung von Einnahmen und Ausgaben."
 publish_to: 'none'
+
 version: 1.0.0+1
 
 environment:
@@ -9,15 +10,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  cupertino_icons: ^1.0.6
-  # Zustandsmanagement
-  flutter_riverpod: ^2.4.9
-  # Formatierung von Währungen und Daten
+  
+  # Für Datums- und Währungsformatierung
   intl: ^0.19.0
-  # Eindeutige IDs für Transaktionen
-  uuid: ^4.2.2
-  # Lokale Speicherung
-  shared_preferences: ^2.2.2
 
 dev_dependencies:
   flutter_test:
@@ -26,3 +21,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  # Falls wir später Icons oder Bilder hinzufügen, werden wir sie hier registrieren.
+  # assets:
+  #   - assets/images/
