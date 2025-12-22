@@ -4,43 +4,41 @@ import '../models/transaction.dart';
 
 class TransactionList extends StatelessWidget {
   final List<Transaction> transactions;
+  final Function(String) deleteTx;
 
-  const TransactionList({super.key, required this.transactions});
+  const TransactionList(
+      {super.key, required this.transactions, required this.deleteTx});
 
   @override
   Widget build(BuildContext context) {
+    final currencyFormatter =
+        NumberFormat.currency(locale: 'de_DE', symbol: '€');
+
     return transactions.isEmpty
-        ? const Center(child: Text('Noch keine Buchungen vorhanden!'))
+        ? const Center(child: Text('Keine Buchungen.'))
         : ListView.builder(
             itemCount: transactions.length,
-            itemBuilder: (ctx, index) {
-              final tx = transactions[index];
+            itemBuilder: (ctx, i) {
+              final tx = transactions[i];
               return Card(
-                margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                elevation: 2,
+                margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
                 child: ListTile(
                   leading: CircleAvatar(
-                    radius: 30,
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    child: Padding(
-                      padding: const EdgeInsets.all(6),
-                      child: FittedBox(
-                        child: Text(
-                          '${tx.amount.toStringAsFixed(2)}€',
-                          style: const TextStyle(
-                              color: Colors.white, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ),
+                    backgroundColor: tx.category.color.withOpacity(0.2),
+                    child: Icon(tx.category.icon, color: tx.category.color),
                   ),
                   title: Text(tx.title,
-                      style: Theme.of(context).textTheme.titleLarge),
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
                   subtitle: Text(DateFormat('dd.MM.yyyy').format(tx.date)),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () {
-                      // Lösch-Logik folgt
-                    },
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(currencyFormatter.format(tx.amount),
+                          style: const TextStyle(fontWeight: FontWeight.bold)),
+                      IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () => deleteTx(tx.id)),
+                    ],
                   ),
                 ),
               );

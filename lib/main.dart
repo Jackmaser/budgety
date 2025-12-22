@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'screens/home_screen.dart';
 
 void main() {
-  runApp(const BudgetyApp());
+  initializeDateFormatting('de_DE', null).then((_) {
+    runApp(const BudgetyApp());
+  });
 }
 
 class BudgetyApp extends StatelessWidget {
@@ -14,11 +17,7 @@ class BudgetyApp extends StatelessWidget {
       title: 'Budgety',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.teal,
-          primary: Colors.teal,
-          secondary: Colors.amber,
-        ),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
         useMaterial3: true,
       ),
       home: const HomeScreen(),

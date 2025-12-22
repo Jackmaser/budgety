@@ -1,11 +1,11 @@
-enum TransactionCategory { food, transport, leisure, work, health, other }
+import 'category.dart'; // Importieren
 
 class Transaction {
   final String id;
   final String title;
   final double amount;
   final DateTime date;
-  final TransactionCategory category;
+  final Category category; // Jetzt die Klasse statt Enum
 
   Transaction({
     required this.id,

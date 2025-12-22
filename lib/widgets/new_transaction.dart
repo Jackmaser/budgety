@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
-import '../models/transaction.dart';
+import '../models/category.dart';
 
 class NewTransaction extends StatefulWidget {
-  final Function(String, double, TransactionCategory) addTx;
+  final Function(String, double, Category) addTx;
+  final List<Category> categories;
 
-  const NewTransaction(this.addTx, {super.key});
+  const NewTransaction(
+      {super.key, required this.addTx, required this.categories});
 
   @override
   State<NewTransaction> createState() => _NewTransactionState();
@@ -13,73 +15,68 @@ class NewTransaction extends StatefulWidget {
 class _NewTransactionState extends State<NewTransaction> {
   final _titleController = TextEditingController();
   final _amountController = TextEditingController();
-  TransactionCategory _selectedCategory = TransactionCategory.food;
+  Category? _selectedCategory;
+
+  @override
+  void initState() {
+    if (widget.categories.isNotEmpty) {
+      _selectedCategory = widget.categories[0];
+    }
+    super.initState();
+  }
 
   void _submitData() {
-    final enteredTitle = _titleController.text;
-    final enteredAmount = double.tryParse(_amountController.text) ?? 0;
+    final title = _titleController.text;
+    final amount =
+        double.tryParse(_amountController.text.replaceAll(',', '.')) ?? 0;
 
-    if (enteredTitle.isEmpty || enteredAmount <= 0) {
-      return; // Beendet die Funktion, wenn Eingabe ungültig
-    }
+    if (title.isEmpty || amount <= 0 || _selectedCategory == null) return;
 
-    widget.addTx(
-      enteredTitle,
-      enteredAmount,
-      _selectedCategory,
-    );
-
-    Navigator.of(context)
-        .pop(); // Schließt das Bottom Sheet nach dem Hinzufügen
+    widget.addTx(title, amount, _selectedCategory!);
+    Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 5,
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            TextField(
-              decoration: const InputDecoration(labelText: 'Titel'),
+    return Padding(
+      padding: EdgeInsets.only(
+          top: 20,
+          left: 20,
+          right: 20,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
               controller: _titleController,
-              onSubmitted: (_) => _submitData(),
-            ),
-            TextField(
-              decoration: const InputDecoration(labelText: 'Betrag (€)'),
-              controller: _amountController,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              onSubmitted: (_) => _submitData(),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                const Text("Kategorie: "),
-                DropdownButton<TransactionCategory>(
-                  value: _selectedCategory,
-                  items: TransactionCategory.values.map((cat) {
-                    return DropdownMenuItem(
-                      value: cat,
-                      child: Text(cat.name.toUpperCase()),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedCategory = value!;
-                    });
-                  },
+              decoration: const InputDecoration(labelText: 'Titel')),
+          TextField(
+            controller: _amountController,
+            decoration: const InputDecoration(labelText: 'Betrag'),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          ),
+          const SizedBox(height: 20),
+          DropdownButton<Category>(
+            value: _selectedCategory,
+            isExpanded: true,
+            items: widget.categories.map((cat) {
+              return DropdownMenuItem(
+                value: cat,
+                child: Row(
+                  children: [
+                    Icon(cat.icon, color: cat.color),
+                    const SizedBox(width: 10),
+                    Text(cat.name),
+                  ],
                 ),
-              ],
-            ),
-            ElevatedButton(
-              onPressed: _submitData,
-              child: const Text('Hinzufügen'),
-            ),
-          ],
-        ),
+              );
+            }).toList(),
+            onChanged: (val) => setState(() => _selectedCategory = val),
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton(
+              onPressed: _submitData, child: const Text('Hinzufügen')),
+        ],
       ),
     );
   }
