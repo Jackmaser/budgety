@@ -5,31 +5,34 @@ class Category {
   final String name;
   final IconData icon;
   final Color color;
+  final DateTime lastModified; // Neu für die Sortierung
 
   Category({
     required this.id,
     required this.name,
     required this.icon,
     required this.color,
+    required this.lastModified,
   });
 
-  // Wandelt Objekt in eine Map um (für JSON)
   Map<String, dynamic> toMap() {
     return {
       'id': id,
       'name': name,
-      'iconCode': icon.codePoint, // Icon als Zahl speichern
-      'colorValue': color.value, // Farbe als Zahl speichern
+      'iconCode': icon.codePoint,
+      'colorValue': color.value,
+      'lastModified': lastModified.toIso8601String(),
     };
   }
 
-  // Erstellt Objekt aus einer Map
   factory Category.fromMap(Map<String, dynamic> map) {
     return Category(
       id: map['id'],
       name: map['name'],
       icon: IconData(map['iconCode'], fontFamily: 'MaterialIcons'),
       color: Color(map['colorValue']),
+      lastModified: DateTime.parse(
+          map['lastModified'] ?? DateTime.now().toIso8601String()),
     );
   }
 }

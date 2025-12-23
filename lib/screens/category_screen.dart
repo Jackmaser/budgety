@@ -24,7 +24,6 @@ class _CategoryScreenState extends State<CategoryScreen> {
   Color _selectedColor = Colors.teal;
   IconData _selectedIcon = Icons.star;
 
-  // Massiv erweiterte Farbpalette (Material Design Colors)
   final List<Color> _availableColors = [
     Colors.red,
     Colors.pink,
@@ -48,30 +47,53 @@ class _CategoryScreenState extends State<CategoryScreen> {
     Colors.black,
   ];
 
-  // Massiv erweiterte Icon-Sammlung sortiert nach Themen
   final List<IconData> _availableIcons = [
-    // Essen & Trinken
-    Icons.restaurant, Icons.local_cafe, Icons.local_bar, Icons.icecream,
+    Icons.restaurant,
+    Icons.local_cafe,
+    Icons.local_bar,
+    Icons.icecream,
     Icons.fastfood,
-    // Einkaufen & Finanzen
-    Icons.shopping_cart, Icons.shopping_bag, Icons.payments, Icons.credit_card,
-    Icons.savings, Icons.account_balance,
-    // Transport & Reise
-    Icons.directions_car, Icons.directions_bus, Icons.pedal_bike, Icons.flight,
-    Icons.hotel, Icons.commute,
-    // Haus & Wohnen
-    Icons.home, Icons.lightbulb, Icons.electrical_services, Icons.water_drop,
-    Icons.wifi, Icons.cleaning_services, Icons.inventory,
-    // Freizeit & Hobby
-    Icons.movie, Icons.sports_esports, Icons.fitness_center, Icons.brush,
-    Icons.music_note, Icons.camera_alt, Icons.theater_comedy,
-    // Gesundheit & Vorsorge
-    Icons.medical_services, Icons.healing, Icons.spa, Icons.psychology,
-    // Arbeit & Bildung
-    Icons.work, Icons.laptop, Icons.school, Icons.menu_book,
-    // Sonstiges
-    Icons.pets, Icons.child_friendly, Icons.redeem, Icons.celebration,
-    Icons.star, Icons.build, Icons.checkroom
+    Icons.shopping_cart,
+    Icons.shopping_bag,
+    Icons.payments,
+    Icons.credit_card,
+    Icons.savings,
+    Icons.account_balance,
+    Icons.directions_car,
+    Icons.directions_bus,
+    Icons.pedal_bike,
+    Icons.flight,
+    Icons.hotel,
+    Icons.commute,
+    Icons.home,
+    Icons.lightbulb,
+    Icons.electrical_services,
+    Icons.water_drop,
+    Icons.wifi,
+    Icons.cleaning_services,
+    Icons.inventory,
+    Icons.movie,
+    Icons.sports_esports,
+    Icons.fitness_center,
+    Icons.brush,
+    Icons.music_note,
+    Icons.camera_alt,
+    Icons.theater_comedy,
+    Icons.medical_services,
+    Icons.healing,
+    Icons.spa,
+    Icons.psychology,
+    Icons.work,
+    Icons.laptop,
+    Icons.school,
+    Icons.menu_book,
+    Icons.pets,
+    Icons.child_friendly,
+    Icons.redeem,
+    Icons.celebration,
+    Icons.star,
+    Icons.build,
+    Icons.checkroom
   ];
 
   void _showCategoryDialog({Category? categoryToEdit}) {
@@ -93,7 +115,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
               ? 'Kategorie bearbeiten'
               : 'Neue Kategorie'),
           content: SizedBox(
-            width: double.maxFinite, // Nutzt die verfügbare Breite
+            width: double.maxFinite,
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -120,20 +142,15 @@ class _CategoryScreenState extends State<CategoryScreen> {
                                 width: 35,
                                 height: 35,
                                 decoration: BoxDecoration(
-                                    color: color,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: _selectedColor == color
-                                          ? Colors.black
-                                          : Colors.transparent,
-                                      width: 2,
-                                    ),
-                                    boxShadow: [
-                                      if (_selectedColor == color)
-                                        const BoxShadow(
-                                            color: Colors.black26,
-                                            blurRadius: 4)
-                                    ]),
+                                  color: color,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: _selectedColor == color
+                                        ? Colors.black
+                                        : Colors.transparent,
+                                    width: 2,
+                                  ),
+                                ),
                                 child: _selectedColor == color
                                     ? const Icon(Icons.check,
                                         size: 20, color: Colors.white)
@@ -188,12 +205,16 @@ class _CategoryScreenState extends State<CategoryScreen> {
             ElevatedButton(
               onPressed: () {
                 if (_nameController.text.isEmpty) return;
+
+                // HIER WAR DER FEHLER: lastModified wurde hinzugefügt
                 final newCat = Category(
                   id: categoryToEdit?.id ?? DateTime.now().toString(),
                   name: _nameController.text,
                   icon: _selectedIcon,
                   color: _selectedColor,
+                  lastModified: DateTime.now(), // Zeitstempel für Sortierung
                 );
+
                 if (categoryToEdit != null) {
                   widget.onUpdateCategory(newCat);
                 } else {

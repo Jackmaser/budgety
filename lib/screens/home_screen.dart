@@ -21,16 +21,9 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   List<Transaction> _transactions = [];
-  List<Category> _categories = [
-    Category(
-        id: 'c1', name: 'Essen', icon: Icons.restaurant, color: Colors.orange),
-    Category(
-        id: 'c2',
-        name: 'Transport',
-        icon: Icons.directions_car,
-        color: Colors.blue),
-  ];
+  List<Category> _categories = [];
   ChartType _selectedChartType = ChartType.pie;
+  CategorySortOption _currentSort = CategorySortOption.custom;
 
   @override
   void initState() {
@@ -38,7 +31,25 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadData();
   }
 
-  // --- SPEICHERN & LADEN ---
+  // Sortierte Kategorien zurückgeben
+  List<Category> get _sortedCategories {
+    List<Category> sorted = List.from(_categories);
+    switch (_currentSort) {
+      case CategorySortOption.alphabetical:
+        sorted.sort(
+            (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        break;
+      case CategorySortOption.lastModified:
+        sorted.sort((a, b) => b.lastModified.compareTo(a.lastModified));
+        break;
+      case CategorySortOption.custom:
+        // Keine Sortierung = Erstellungsreihenfolge (da IDs Zeitstempel sind)
+        sorted.sort((a, b) => a.id.compareTo(b.id));
+        break;
+    }
+    return sorted;
+  }
+
   Future<void> _saveData() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('user_categories',
@@ -46,74 +57,65 @@ class _HomeScreenState extends State<HomeScreen> {
     await prefs.setString('user_transactions',
         jsonEncode(_transactions.map((t) => t.toMap()).toList()));
     await prefs.setInt('selected_chart_type', _selectedChartType.index);
+    await prefs.setInt('category_sort_pref', _currentSort.index);
   }
 
   Future<void> _loadData() async {
     final prefs = await SharedPreferences.getInstance();
     final catsRaw = prefs.getString('user_categories');
     final txsRaw = prefs.getString('user_transactions');
-    final chartIndex = prefs.getInt('selected_chart_type');
+    final sortIndex = prefs.getInt('category_sort_pref');
 
     setState(() {
       if (catsRaw != null) {
         _categories = (jsonDecode(catsRaw) as List)
             .map((i) => Category.fromMap(i))
             .toList();
+      } else {
+        // Fallback falls leer
+        _categories = [
+          Category(
+              id: 'c1',
+              name: 'Essen',
+              icon: Icons.restaurant,
+              color: Colors.orange,
+              lastModified: DateTime.now()),
+          Category(
+              id: 'c2',
+              name: 'Transport',
+              icon: Icons.directions_car,
+              color: Colors.blue,
+              lastModified: DateTime.now()),
+        ];
       }
-      if (txsRaw != null) {
+      if (txsRaw != null)
         _transactions = (jsonDecode(txsRaw) as List)
             .map((i) => Transaction.fromMap(i))
             .toList();
-      }
-      if (chartIndex != null) {
-        _selectedChartType = ChartType.values[chartIndex];
-      }
+      if (sortIndex != null)
+        _currentSort = CategorySortOption.values[sortIndex];
     });
   }
 
-  // --- TRANSAKTION LOGIK ---
-  void _addNewTransaction(String title, double amount, Category category) {
-    setState(() {
-      _transactions.add(Transaction(
-        id: DateTime.now().toString(),
-        title: title,
-        amount: amount,
-        date: DateTime.now(),
-        category: category,
-      ));
-    });
+  void _addCategory(Category c) {
+    setState(() => _categories.add(c));
     _saveData();
   }
 
-  void _updateTransaction(
-      String id, String title, double amount, Category category) {
-    final index = _transactions.indexWhere((tx) => tx.id == id);
-    if (index >= 0) {
-      setState(() {
-        _transactions[index] = Transaction(
-          id: id,
-          title: title,
-          amount: amount,
-          date: _transactions[index].date,
-          category: category,
-        );
-      });
-      _saveData();
-    }
-  }
-
-  void _deleteTransaction(String id) {
-    setState(() => _transactions.removeWhere((tx) => tx.id == id));
-    _saveData();
-  }
-
-  // --- KATEGORIE LOGIK ---
   void _updateCategory(Category updatedCat) {
     final index = _categories.indexWhere((c) => c.id == updatedCat.id);
     if (index >= 0) {
+      // Neuen Zeitstempel setzen
+      final catWithNewTimestamp = Category(
+        id: updatedCat.id,
+        name: updatedCat.name,
+        icon: updatedCat.icon,
+        color: updatedCat.color,
+        lastModified: DateTime.now(),
+      );
       setState(() {
-        _categories[index] = updatedCat;
-        // WICHTIG: Alle bestehenden Buchungen dieser Kategorie aktualisieren (Farbe/Icon Sync)
+        _categories[index] = catWithNewTimestamp;
+        // Transaktionen synchronisieren...
         for (int i = 0; i < _transactions.length; i++) {
           if (_transactions[i].category.id == updatedCat.id) {
             _transactions[i] = Transaction(
@@ -121,52 +123,13 @@ class _HomeScreenState extends State<HomeScreen> {
               title: _transactions[i].title,
               amount: _transactions[i].amount,
               date: _transactions[i].date,
-              category: updatedCat,
+              category: catWithNewTimestamp,
             );
           }
         }
       });
       _saveData();
     }
-  }
-
-  // --- EINSTELLUNGEN LOGIK ---
-  void _resetAllData() {
-    setState(() {
-      _transactions = [];
-      _categories = [
-        Category(
-            id: 'c1',
-            name: 'Essen',
-            icon: Icons.restaurant,
-            color: Colors.orange),
-        Category(
-            id: 'c2',
-            name: 'Transport',
-            icon: Icons.directions_car,
-            color: Colors.blue),
-      ];
-      _selectedChartType = ChartType.pie;
-    });
-    // Da SharedPreferences bereits im SettingsScreen gelöscht wurden,
-    // müssen wir hier nur den State leeren.
-  }
-
-  // --- FORMULAR ÖFFNEN (Neu & Bearbeiten) ---
-  void _openTransactionForm({Transaction? tx}) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => NewTransaction(
-        addTx: _addNewTransaction,
-        updateTx: _updateTransaction,
-        categories: _categories,
-        editingTransaction: tx,
-      ),
-    );
   }
 
   @override
@@ -177,92 +140,134 @@ class _HomeScreenState extends State<HomeScreen> {
         _transactions.fold(0.0, (sum, item) => sum + item.amount);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Budgety',
-            style: TextStyle(fontWeight: FontWeight.bold)),
-        centerTitle: true,
-        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-      ),
+      appBar: AppBar(title: const Text('Budgety'), centerTitle: true),
       drawer: MainDrawer(
-        onShowCategories: () {
-          Navigator.of(context).push(MaterialPageRoute(
-            builder: (ctx) => CategoryScreen(
-              categories: _categories,
-              onAddCategory: (c) {
-                setState(() => _categories.add(c));
-                _saveData();
-              },
-              onUpdateCategory: _updateCategory,
-              onDeleteCategory: (id) {
-                setState(() => _categories.removeWhere((c) => c.id == id));
-                _saveData();
-              },
-            ),
-          ));
-        },
-        onShowSettings: () {
-          Navigator.of(context).push(MaterialPageRoute(
-            builder: (ctx) => SettingsScreen(onDataReset: _resetAllData),
-          ));
-        },
+        onShowCategories: () => Navigator.of(context).push(MaterialPageRoute(
+          builder: (ctx) => CategoryScreen(
+            categories: _sortedCategories, // Hier die sortierte Liste übergeben
+            onAddCategory: _addCategory,
+            onUpdateCategory: _updateCategory,
+            onDeleteCategory: (id) {
+              setState(() => _categories.removeWhere((c) => c.id == id));
+              _saveData();
+            },
+          ),
+        )),
+        onShowSettings: () => Navigator.of(context).push(MaterialPageRoute(
+          builder: (ctx) => SettingsScreen(
+            currentSort: _currentSort,
+            onSortChanged: (newSort) {
+              setState(() => _currentSort = newSort);
+              _saveData();
+            },
+            onDataReset: () async {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.clear();
+              setState(() {
+                _transactions = [];
+                _categories = [
+                  Category(
+                      id: 'c1',
+                      name: 'Essen',
+                      icon: Icons.restaurant,
+                      color: Colors.orange,
+                      lastModified: DateTime.now()),
+                ];
+              });
+              if (mounted) Navigator.of(context).pop();
+            },
+          ),
+        )),
       ),
       body: Column(
         children: [
-          // Anzeige Gesamtsumme
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             child: Card(
               color: Theme.of(context).colorScheme.primary,
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15)),
               child: Padding(
                 padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    const Text('Gesamtausgaben',
-                        style: TextStyle(color: Colors.white70)),
-                    const SizedBox(height: 5),
-                    Text(
-                      currencyFormatter.format(totalAmount),
+                child: Column(children: [
+                  const Text('Gesamtausgaben',
+                      style: TextStyle(color: Colors.white70)),
+                  Text(currencyFormatter.format(totalAmount),
                       style: const TextStyle(
                           color: Colors.white,
                           fontSize: 32,
-                          fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
+                          fontWeight: FontWeight.bold)),
+                ]),
               ),
             ),
           ),
-
-          // Diagramm Bereich
           ChartView(
-            transactions: _transactions,
-            selectedType: _selectedChartType,
-            onTypeChanged: (newType) {
-              setState(() => _selectedChartType = newType);
-              _saveData();
-            },
-          ),
-
-          // Liste der Buchungen
+              transactions: _transactions,
+              selectedType: _selectedChartType,
+              onTypeChanged: (t) {
+                setState(() => _selectedChartType = t);
+                _saveData();
+              }),
           Expanded(
             child: TransactionList(
-              transactions: _transactions,
-              deleteTx: _deleteTransaction,
-              onEditTx: (tx) => _openTransactionForm(tx: tx),
-            ),
+                transactions: _transactions,
+                deleteTx: (id) {
+                  setState(() => _transactions.removeWhere((t) => t.id == id));
+                  _saveData();
+                },
+                onEditTx: (tx) {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    builder: (_) => NewTransaction(
+                      addTx: (t, a, c) {
+                        setState(() => _transactions.add(Transaction(
+                            id: DateTime.now().toString(),
+                            title: t,
+                            amount: a,
+                            date: DateTime.now(),
+                            category: c)));
+                        _saveData();
+                      },
+                      updateTx: (id, t, a, c) {
+                        final i = _transactions.indexWhere((tx) => tx.id == id);
+                        setState(() => _transactions[i] = Transaction(
+                            id: id,
+                            title: t,
+                            amount: a,
+                            date: _transactions[i].date,
+                            category: c));
+                        _saveData();
+                      },
+                      categories: _sortedCategories,
+                      editingTransaction: tx,
+                    ),
+                  );
+                }),
           ),
         ],
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openTransactionForm(),
-        label: const Text('Neue Buchung'),
-        icon: const Icon(Icons.add),
-      ),
+          onPressed: () {
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              builder: (_) => NewTransaction(
+                addTx: (t, a, c) {
+                  setState(() => _transactions.add(Transaction(
+                      id: DateTime.now().toString(),
+                      title: t,
+                      amount: a,
+                      date: DateTime.now(),
+                      category: c)));
+                  _saveData();
+                },
+                updateTx: (id, t, a, c) {},
+                categories: _sortedCategories,
+              ),
+            );
+          },
+          label: const Text('Neue Buchung'),
+          icon: const Icon(Icons.add)),
     );
   }
 }

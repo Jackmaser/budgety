@@ -1,47 +1,52 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../main.dart'; // Für themeNotifier
+
+enum CategorySortOption { alphabetical, custom, lastModified }
 
 class SettingsScreen extends StatefulWidget {
   final VoidCallback onDataReset;
+  final CategorySortOption currentSort;
+  final Function(CategorySortOption) onSortChanged;
 
-  const SettingsScreen({super.key, required this.onDataReset});
+  const SettingsScreen({
+    super.key,
+    required this.onDataReset,
+    required this.currentSort,
+    required this.onSortChanged,
+  });
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool _isDarkMode = false; // Platzhalter für spätere Theme-Logik
+  // Lokaler State für die Auswahl, damit der Punkt sofort springt
+  late CategorySortOption _tempSelectedSort;
 
-  // Funktion zum Löschen aller gespeicherten Daten
-  Future<void> _confirmReset() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Daten zurücksetzen?'),
-        content: const Text(
-            'Möchtest du wirklich alle Buchungen und Kategorien löschen? Dies kann nicht rückgängig gemacht werden.'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Abbrechen')),
-          TextButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Ja, alles löschen',
-                  style: TextStyle(color: Colors.red))),
-        ],
-      ),
-    );
+  @override
+  void initState() {
+    super.initState();
+    // Initialisierung mit dem Wert vom HomeScreen
+    _tempSelectedSort = widget.currentSort;
+  }
 
-    if (confirmed == true) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.clear(); // Löscht alles aus SharedPreferences
-      widget.onDataReset(); // Benachrichtigt den HomeScreen
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Alle Daten wurden gelöscht.')));
-      }
-    }
+  void _toggleTheme(bool isDark) async {
+    themeNotifier.value = isDark ? ThemeMode.dark : ThemeMode.light;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isDarkMode', isDark);
+    setState(() {}); // UI aktualisieren für den Switch
+  }
+
+  void _handleSortChange(CategorySortOption? newValue) {
+    if (newValue == null) return;
+
+    setState(() {
+      _tempSelectedSort = newValue;
+    });
+
+    // Den HomeScreen im Hintergrund informieren
+    widget.onSortChanged(newValue);
   }
 
   @override
@@ -52,26 +57,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       body: ListView(
         children: [
-          const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Text('Erscheinungsbild',
+          const ListTile(
+            title: Text('Design',
                 style:
                     TextStyle(fontWeight: FontWeight.bold, color: Colors.teal)),
           ),
           SwitchListTile(
-            title: const Text('Dunkles Design'),
-            subtitle: const Text('Wechsle zwischen hellem und dunklem Modus'),
-            value: _isDarkMode,
-            onChanged: (val) {
-              setState(() => _isDarkMode = val);
-              // Hinweis: Für echten Dark Mode müssten wir einen ThemeProvider nutzen.
-            },
+            title: const Text('Dark Mode'),
             secondary: const Icon(Icons.dark_mode),
+            value: themeNotifier.value == ThemeMode.dark,
+            onChanged: _toggleTheme,
           ),
           const Divider(),
-          const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Text('Datenverwaltung',
+          const ListTile(
+            title: Text('Kategorien Sortierung',
+                style:
+                    TextStyle(fontWeight: FontWeight.bold, color: Colors.teal)),
+          ),
+          RadioListTile<CategorySortOption>(
+            title: const Text('Alphabetisch'),
+            value: CategorySortOption.alphabetical,
+            groupValue: _tempSelectedSort, // Nutzt den lokalen State
+            onChanged: _handleSortChange,
+          ),
+          RadioListTile<CategorySortOption>(
+            title: const Text('Erstellungsdatum'),
+            value: CategorySortOption.custom,
+            groupValue: _tempSelectedSort, // Nutzt den lokalen State
+            onChanged: _handleSortChange,
+          ),
+          RadioListTile<CategorySortOption>(
+            title: const Text('Zuletzt geändert'),
+            value: CategorySortOption.lastModified,
+            groupValue: _tempSelectedSort, // Nutzt den lokalen State
+            onChanged: _handleSortChange,
+          ),
+          const Divider(),
+          const ListTile(
+            title: Text('Datenverwaltung',
                 style:
                     TextStyle(fontWeight: FontWeight.bold, color: Colors.teal)),
           ),
@@ -80,12 +103,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: const Text('App zurücksetzen',
                 style: TextStyle(color: Colors.red)),
             subtitle: const Text('Löscht alle Kategorien und Buchungen'),
-            onTap: _confirmReset,
+            onTap: widget.onDataReset,
           ),
           const Divider(),
-          const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Text('Über Budgety',
+          const ListTile(
+            title: Text('Info',
                 style:
                     TextStyle(fontWeight: FontWeight.bold, color: Colors.teal)),
           ),
@@ -93,10 +115,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             leading: Icon(Icons.info_outline),
             title: Text('Version'),
             trailing: Text('1.0.0'),
-          ),
-          const ListTile(
-            leading: Icon(Icons.code),
-            title: Text('Entwickelt mit Flutter'),
           ),
         ],
       ),
