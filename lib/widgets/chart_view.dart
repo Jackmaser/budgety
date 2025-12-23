@@ -17,7 +17,6 @@ class ChartView extends StatelessWidget {
     required this.onTypeChanged,
   });
 
-  // Hilfsfunktion: Gruppiert Beträge nach Kategorien
   Map<String, double> get _groupedData {
     Map<String, double> data = {};
     for (var tx in transactions) {
@@ -27,7 +26,6 @@ class ChartView extends StatelessWidget {
     return data;
   }
 
-  // Hilfsfunktion für den dynamischen Titel
   String get _chartTitle {
     switch (selectedType) {
       case ChartType.pie:
@@ -35,26 +33,23 @@ class ChartView extends StatelessWidget {
       case ChartType.bar:
         return 'Säulendiagramm';
       case ChartType.none:
-        return 'Analyse (ausgeblendet)';
+        return 'Analyse (aus)';
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (transactions.isEmpty) {
-      return const SizedBox.shrink();
-    }
+    if (transactions.isEmpty) return const SizedBox.shrink();
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      elevation: 4,
+      elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // HEADER: Mit dynamischem Titel
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -65,55 +60,60 @@ class ChartView extends StatelessWidget {
                           ? Icons.analytics_outlined
                           : Icons.analytics,
                       color: Theme.of(context).colorScheme.primary,
+                      size: 20,
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      _chartTitle, // Dynamischer Titel
+                      _chartTitle,
                       style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold),
+                          fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
                 PopupMenuButton<ChartType>(
-                  tooltip: 'Diagrammtyp ändern',
-                  icon: const Icon(Icons.more_vert),
+                  tooltip: 'Typ ändern',
+                  icon: const Icon(Icons.more_vert, size: 20),
                   onSelected: onTypeChanged,
                   itemBuilder: (context) => [
                     const PopupMenuItem(
                       value: ChartType.pie,
-                      child: Row(children: [
-                        Icon(Icons.pie_chart_outline),
-                        SizedBox(width: 8),
-                        Text('Kuchen')
-                      ]),
+                      child: Row(
+                        children: [
+                          Icon(Icons.pie_chart_outline, size: 20),
+                          SizedBox(width: 10),
+                          Text('Kuchen'),
+                        ],
+                      ),
                     ),
                     const PopupMenuItem(
                       value: ChartType.bar,
-                      child: Row(children: [
-                        Icon(Icons.bar_chart_outlined),
-                        SizedBox(width: 8),
-                        Text('Säulen')
-                      ]),
+                      child: Row(
+                        children: [
+                          Icon(Icons.bar_chart_outlined, size: 20),
+                          SizedBox(width: 10),
+                          Text('Säulen'),
+                        ],
+                      ),
                     ),
                     const PopupMenuItem(
                       value: ChartType.none,
-                      child: Row(children: [
-                        Icon(Icons.visibility_off_outlined),
-                        SizedBox(width: 8),
-                        Text('Ausblenden')
-                      ]),
+                      child: Row(
+                        children: [
+                          Icon(Icons.visibility_off_outlined, size: 20),
+                          SizedBox(width: 10),
+                          Text('Ausblenden'),
+                        ],
+                      ),
                     ),
                   ],
                 ),
               ],
             ),
-
-            // INHALT: Erscheint nur, wenn nicht 'none' gewählt ist
             if (selectedType != ChartType.none)
               Padding(
-                padding: const EdgeInsets.only(top: 20),
+                padding: const EdgeInsets.only(top: 10, bottom: 10),
                 child: SizedBox(
-                  height: 200,
+                  height: 150,
                   child: selectedType == ChartType.pie
                       ? _buildPieChart()
                       : _buildBarChart(),
@@ -130,7 +130,7 @@ class ChartView extends StatelessWidget {
     return PieChart(
       PieChartData(
         sectionsSpace: 2,
-        centerSpaceRadius: 40,
+        centerSpaceRadius: 30,
         sections: data.entries.map((entry) {
           final category = transactions
               .firstWhere((t) => t.category.name == entry.key)
@@ -139,9 +139,9 @@ class ChartView extends StatelessWidget {
             color: category.color,
             value: entry.value,
             title: '${entry.value.toStringAsFixed(0)}€',
-            radius: 50,
+            radius: 40,
             titleStyle: const TextStyle(
-                fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
           );
         }).toList(),
       ),
@@ -163,7 +163,7 @@ class ChartView extends StatelessWidget {
               BarChartRodData(
                 toY: entry.value,
                 color: category.color,
-                width: 18,
+                width: 14,
                 borderRadius: BorderRadius.circular(4),
               ),
             ],
@@ -183,11 +183,11 @@ class ChartView extends StatelessWidget {
                 if (value.toInt() >= data.length)
                   return const SizedBox.shrink();
                 return Padding(
-                  padding: const EdgeInsets.only(top: 8.0),
+                  padding: const EdgeInsets.only(top: 4.0),
                   child: Text(
                     data.keys.elementAt(value.toInt()).substring(0, 3),
                     style: const TextStyle(
-                        fontSize: 10, fontWeight: FontWeight.bold),
+                        fontSize: 9, fontWeight: FontWeight.bold),
                   ),
                 );
               },
