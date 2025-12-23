@@ -122,11 +122,10 @@ class _CategoryScreenState extends State<CategoryScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   TextField(
-                      controller: _nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Name',
-                        border: OutlineInputBorder(),
-                      )),
+                    controller: _nameController,
+                    decoration: const InputDecoration(
+                        labelText: 'Name', border: OutlineInputBorder()),
+                  ),
                   const SizedBox(height: 25),
                   const Text('Farbe wählen',
                       style: TextStyle(fontWeight: FontWeight.bold)),
@@ -145,11 +144,10 @@ class _CategoryScreenState extends State<CategoryScreen> {
                                   color: color,
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                    color: _selectedColor == color
-                                        ? Colors.black
-                                        : Colors.transparent,
-                                    width: 2,
-                                  ),
+                                      color: _selectedColor == color
+                                          ? Colors.black
+                                          : Colors.transparent,
+                                      width: 2),
                                 ),
                                 child: _selectedColor == color
                                     ? const Icon(Icons.check,
@@ -178,18 +176,15 @@ class _CategoryScreenState extends State<CategoryScreen> {
                                       : Colors.transparent,
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(
+                                      color: _selectedIcon == icon
+                                          ? _selectedColor
+                                          : Colors.grey.shade300),
+                                ),
+                                child: Icon(icon,
                                     color: _selectedIcon == icon
                                         ? _selectedColor
-                                        : Colors.grey.shade300,
-                                  ),
-                                ),
-                                child: Icon(
-                                  icon,
-                                  color: _selectedIcon == icon
-                                      ? _selectedColor
-                                      : Colors.grey[600],
-                                  size: 28,
-                                ),
+                                        : Colors.grey[600],
+                                    size: 28),
                               ),
                             ))
                         .toList(),
@@ -206,22 +201,29 @@ class _CategoryScreenState extends State<CategoryScreen> {
               onPressed: () {
                 if (_nameController.text.isEmpty) return;
 
-                // HIER WAR DER FEHLER: lastModified wurde hinzugefügt
                 final newCat = Category(
                   id: categoryToEdit?.id ?? DateTime.now().toString(),
                   name: _nameController.text,
                   icon: _selectedIcon,
                   color: _selectedColor,
-                  lastModified: DateTime.now(), // Zeitstempel für Sortierung
+                  lastModified: DateTime.now(),
                 );
 
-                if (categoryToEdit != null) {
-                  widget.onUpdateCategory(newCat);
-                } else {
-                  widget.onAddCategory(newCat);
-                }
+                setState(() {
+                  if (categoryToEdit != null) {
+                    widget.onUpdateCategory(newCat);
+                    // Lokales Update der Liste für sofortige Anzeige
+                    final index =
+                        widget.categories.indexWhere((c) => c.id == newCat.id);
+                    if (index >= 0) widget.categories[index] = newCat;
+                  } else {
+                    widget.onAddCategory(newCat);
+                    // Lokal hinzufügen
+                    widget.categories.add(newCat);
+                  }
+                });
+
                 Navigator.of(ctx).pop();
-                setState(() {});
               },
               child: const Text('Speichern'),
             ),
@@ -244,8 +246,6 @@ class _CategoryScreenState extends State<CategoryScreen> {
                 return Card(
                   margin:
                       const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
                   child: ListTile(
                     leading: CircleAvatar(
                         backgroundColor: cat.color,
@@ -262,7 +262,13 @@ class _CategoryScreenState extends State<CategoryScreen> {
                         IconButton(
                             icon: const Icon(Icons.delete_outline,
                                 color: Colors.red),
-                            onPressed: () => widget.onDeleteCategory(cat.id)),
+                            onPressed: () {
+                              setState(() {
+                                widget.onDeleteCategory(cat.id);
+                                widget.categories
+                                    .removeWhere((c) => c.id == cat.id);
+                              });
+                            }),
                       ],
                     ),
                   ),

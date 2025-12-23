@@ -12,6 +12,7 @@ import '../widgets/chart_view.dart';
 import 'category_screen.dart';
 import 'settings_screen.dart';
 
+// Die verschiedenen Filter-Modi für den Zeitraum
 enum FilterType { total, month, quarter, year }
 
 class HomeScreen extends StatefulWidget {
@@ -28,6 +29,7 @@ class _HomeScreenState extends State<HomeScreen> {
   CategorySortOption _currentSort = CategorySortOption.custom;
   FilterType _currentFilter = FilterType.total;
 
+  // Das aktuell ausgewählte Bezugsdatum für die Pfeil-Navigation
   DateTime _selectedDate = DateTime.now();
 
   @override
@@ -36,7 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadData();
   }
 
-  // --- FILTER & SORTIER LOGIK (Unverändert) ---
+  // --- FILTER LOGIK ---
   List<Transaction> get _filteredTransactions {
     switch (_currentFilter) {
       case FilterType.month:
@@ -62,6 +64,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // Detaillierter Titel für das Diagramm (z.B. "Dezember 2025")
   String get _detailedFilterLabel {
     switch (_currentFilter) {
       case FilterType.month:
@@ -76,6 +79,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // --- NAVIGATION LOGIK (Pfeiltasten am Diagramm) ---
   void _movePeriod(int direction) {
     setState(() {
       switch (_currentFilter) {
@@ -97,6 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  // --- SORTIER-LOGIK FÜR KATEGORIEN ---
   List<Category> get _sortedCategories {
     List<Category> sorted = List.from(_categories);
     switch (_currentSort) {
@@ -167,7 +172,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // --- LOGIK FUNKTIONEN (Aktualisiert mit Date Parameter) ---
+  // --- TRANSAKTIONS-LOGIK ---
   void _addNewTransaction(
       String title, double amount, Category category, DateTime date) {
     setState(() {
@@ -175,7 +180,7 @@ class _HomeScreenState extends State<HomeScreen> {
         id: DateTime.now().toString(),
         title: title,
         amount: amount,
-        date: date, // Nutzt das gewählte Datum
+        date: date,
         category: category,
       ));
     });
@@ -191,7 +196,7 @@ class _HomeScreenState extends State<HomeScreen> {
           id: id,
           title: title,
           amount: amount,
-          date: date, // Nutzt das neue Datum
+          date: date,
           category: category,
         );
       });
@@ -201,6 +206,21 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _deleteTransaction(String id) {
     setState(() => _transactions.removeWhere((tx) => tx.id == id));
+    _saveData();
+  }
+
+  // --- KATEGORIE-LOGIK ---
+  void _addCategory(Category c) {
+    setState(() {
+      _categories.add(c);
+    });
+    _saveData();
+  }
+
+  void _deleteCategory(String id) {
+    setState(() {
+      _categories.removeWhere((c) => c.id == id);
+    });
     _saveData();
   }
 
@@ -243,6 +263,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  // --- FORMULAR ÖFFNEN ---
   void _openTransactionForm({Transaction? tx}) {
     showModalBottomSheet(
       context: context,
@@ -279,16 +300,10 @@ class _HomeScreenState extends State<HomeScreen> {
         onShowCategories: () {
           Navigator.of(context).push(MaterialPageRoute(
             builder: (ctx) => CategoryScreen(
-              categories: _sortedCategories,
-              onAddCategory: (c) {
-                setState(() => _categories.add(c));
-                _saveData();
-              },
+              categories: _categories, // Referenz übergeben für Live-Updates
+              onAddCategory: _addCategory,
               onUpdateCategory: _updateCategory,
-              onDeleteCategory: (id) {
-                setState(() => _categories.removeWhere((c) => c.id == id));
-                _saveData();
-              },
+              onDeleteCategory: _deleteCategory,
             ),
           ));
         },
@@ -308,6 +323,7 @@ class _HomeScreenState extends State<HomeScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
+            // Kompakter Summen-Bereich (Header)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -340,6 +356,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         padding: EdgeInsets.zero,
                         icon: const Icon(Icons.more_vert,
                             color: Colors.white, size: 20),
+                        tooltip: 'Zeitraum wählen',
                         onSelected: (FilterType selected) {
                           setState(() {
                             _currentFilter = selected;
@@ -364,6 +381,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
+
+            // Diagramm-Widget mit Pfeilnavigation
             ChartView(
               transactions: filteredTxs,
               selectedType: _selectedChartType,
@@ -376,11 +395,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 _saveData();
               },
             ),
+
+            // Gruppierte Liste der Buchungen
             TransactionList(
               transactions: filteredTxs,
               deleteTx: _deleteTransaction,
               onEditTx: (tx) => _openTransactionForm(tx: tx),
             ),
+
             const SizedBox(height: 80),
           ],
         ),
