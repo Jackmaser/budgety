@@ -209,21 +209,20 @@ class _CategoryScreenState extends State<CategoryScreen> {
                   lastModified: DateTime.now(),
                 );
 
-                setState(() {
-                  if (categoryToEdit != null) {
-                    widget.onUpdateCategory(newCat);
-                    // Lokales Update der Liste für sofortige Anzeige
-                    final index =
-                        widget.categories.indexWhere((c) => c.id == newCat.id);
-                    if (index >= 0) widget.categories[index] = newCat;
-                  } else {
-                    widget.onAddCategory(newCat);
-                    // Lokal hinzufügen
-                    widget.categories.add(newCat);
-                  }
-                });
+                // Hier rufen wir NUR die Callbacks auf.
+                // Da der HomeScreen setState() macht und die Liste manipuliert,
+                // müssen wir hier nichts mehr manuell hinzufügen.
+                if (categoryToEdit != null) {
+                  widget.onUpdateCategory(newCat);
+                } else {
+                  widget.onAddCategory(newCat);
+                }
 
                 Navigator.of(ctx).pop();
+
+                // Wir triggern ein lokales Neuzeichnen, damit die Liste
+                // die Änderungen aus dem HomeScreen sofort anzeigt.
+                setState(() {});
               },
               child: const Text('Speichern'),
             ),
@@ -263,11 +262,9 @@ class _CategoryScreenState extends State<CategoryScreen> {
                             icon: const Icon(Icons.delete_outline,
                                 color: Colors.red),
                             onPressed: () {
-                              setState(() {
-                                widget.onDeleteCategory(cat.id);
-                                widget.categories
-                                    .removeWhere((c) => c.id == cat.id);
-                              });
+                              // Auch hier: Nur den Callback rufen.
+                              widget.onDeleteCategory(cat.id);
+                              setState(() {});
                             }),
                       ],
                     ),
