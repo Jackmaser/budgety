@@ -12,6 +12,9 @@ import '../widgets/chart_view.dart';
 import 'category_screen.dart';
 import 'settings_screen.dart';
 
+// Die verschiedenen Filter-Modi
+enum FilterType { total, month, quarter, year }
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -25,10 +28,49 @@ class _HomeScreenState extends State<HomeScreen> {
   ChartType _selectedChartType = ChartType.pie;
   CategorySortOption _currentSort = CategorySortOption.custom;
 
+  // Aktueller Filter-Status
+  FilterType _currentFilter = FilterType.total;
+
   @override
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  // --- FILTER LOGIK ---
+  List<Transaction> get _filteredTransactions {
+    final now = DateTime.now();
+    switch (_currentFilter) {
+      case FilterType.month:
+        return _transactions
+            .where(
+                (tx) => tx.date.year == now.year && tx.date.month == now.month)
+            .toList();
+      case FilterType.year:
+        return _transactions.where((tx) => tx.date.year == now.year).toList();
+      case FilterType.quarter:
+        int currentQuarter = (now.month - 1) ~/ 3 + 1;
+        return _transactions.where((tx) {
+          int txQuarter = (tx.date.month - 1) ~/ 3 + 1;
+          return tx.date.year == now.year && txQuarter == currentQuarter;
+        }).toList();
+      case FilterType.total:
+      default:
+        return _transactions;
+    }
+  }
+
+  String get _filterLabel {
+    switch (_currentFilter) {
+      case FilterType.month:
+        return 'Diesen Monat';
+      case FilterType.quarter:
+        return 'Dieses Quartal';
+      case FilterType.year:
+        return 'Dieses Jahr';
+      case FilterType.total:
+        return 'Gesamt';
+    }
   }
 
   // --- SORTIER-LOGIK ---
@@ -43,8 +85,7 @@ class _HomeScreenState extends State<HomeScreen> {
         sorted.sort((a, b) => b.lastModified.compareTo(a.lastModified));
         break;
       case CategorySortOption.custom:
-        sorted
-            .sort((a, b) => a.id.compareTo(b.id)); // Sortierung nach Erstellung
+        sorted.sort((a, b) => a.id.compareTo(b.id));
         break;
     }
     return sorted;
@@ -59,6 +100,7 @@ class _HomeScreenState extends State<HomeScreen> {
         jsonEncode(_transactions.map((t) => t.toMap()).toList()));
     await prefs.setInt('selected_chart_type', _selectedChartType.index);
     await prefs.setInt('category_sort_pref', _currentSort.index);
+    await prefs.setInt('current_filter_pref', _currentFilter.index);
   }
 
   Future<void> _loadData() async {
@@ -67,6 +109,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final txsRaw = prefs.getString('user_transactions');
     final chartIndex = prefs.getInt('selected_chart_type');
     final sortIndex = prefs.getInt('category_sort_pref');
+    final filterIndex = prefs.getInt('current_filter_pref');
 
     setState(() {
       if (catsRaw != null) {
@@ -74,7 +117,6 @@ class _HomeScreenState extends State<HomeScreen> {
             .map((i) => Category.fromMap(i))
             .toList();
       } else {
-        // Standard-Kategorien beim ersten Start
         _categories = [
           Category(
               id: 'c1',
@@ -95,12 +137,10 @@ class _HomeScreenState extends State<HomeScreen> {
             .map((i) => Transaction.fromMap(i))
             .toList();
       }
-      if (chartIndex != null) {
-        _selectedChartType = ChartType.values[chartIndex];
-      }
-      if (sortIndex != null) {
+      if (chartIndex != null) _selectedChartType = ChartType.values[chartIndex];
+      if (sortIndex != null)
         _currentSort = CategorySortOption.values[sortIndex];
-      }
+      if (filterIndex != null) _currentFilter = FilterType.values[filterIndex];
     });
   }
 
@@ -140,13 +180,11 @@ class _HomeScreenState extends State<HomeScreen> {
     _saveData();
   }
 
-  // --- KATEGORIE LOGIK ---
   void _updateCategory(Category updatedCat) {
     final index = _categories.indexWhere((c) => c.id == updatedCat.id);
     if (index >= 0) {
       setState(() {
         _categories[index] = updatedCat;
-        // Transaktionen synchronisieren
         for (int i = 0; i < _transactions.length; i++) {
           if (_transactions[i].category.id == updatedCat.id) {
             _transactions[i] = Transaction(
@@ -176,21 +214,20 @@ class _HomeScreenState extends State<HomeScreen> {
       ];
       _selectedChartType = ChartType.pie;
       _currentSort = CategorySortOption.custom;
+      _currentFilter = FilterType.total;
     });
   }
 
-  // --- FORMULAR ÖFFNEN ---
   void _openTransactionForm({Transaction? tx}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => NewTransaction(
         addTx: _addNewTransaction,
         updateTx: _updateTransaction,
-        categories: _sortedCategories, // Hier die sortierte Liste nutzen
+        categories: _sortedCategories,
         editingTransaction: tx,
       ),
     );
@@ -200,8 +237,11 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final currencyFormatter =
         NumberFormat.currency(locale: 'de_DE', symbol: '€');
+
+    // WICHTIG: Wir nutzen hier die gefilterte Liste für Summe, Chart und Liste
+    final filteredTxs = _filteredTransactions;
     double totalAmount =
-        _transactions.fold(0.0, (sum, item) => sum + item.amount);
+        filteredTxs.fold(0.0, (sum, item) => sum + item.amount);
 
     return Scaffold(
       appBar: AppBar(
@@ -215,7 +255,10 @@ class _HomeScreenState extends State<HomeScreen> {
           Navigator.of(context).push(MaterialPageRoute(
             builder: (ctx) => CategoryScreen(
               categories: _sortedCategories,
-              onAddCategory: _addCategory,
+              onAddCategory: (c) {
+                setState(() => _categories.add(c));
+                _saveData();
+              },
               onUpdateCategory: _updateCategory,
               onDeleteCategory: (id) {
                 setState(() => _categories.removeWhere((c) => c.id == id));
@@ -240,7 +283,7 @@ class _HomeScreenState extends State<HomeScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Gesamtsumme Karte
+            // Gesamtsumme Karte mit Filter-Menü
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
@@ -249,28 +292,60 @@ class _HomeScreenState extends State<HomeScreen> {
                 elevation: 4,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(15)),
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    children: [
-                      const Text('Gesamtausgaben',
-                          style: TextStyle(color: Colors.white70)),
-                      Text(
-                        currencyFormatter.format(totalAmount),
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold),
+                child: Stack(
+                  // Stack erlaubt das Positionieren des Menüs oben rechts
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Center(
+                        child: Column(
+                          children: [
+                            Text('Ausgaben (${_filterLabel})',
+                                style: const TextStyle(
+                                    color: Colors.white70, fontSize: 14)),
+                            const SizedBox(height: 5),
+                            Text(
+                              currencyFormatter.format(totalAmount),
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
                       ),
-                    ],
-                  ),
+                    ),
+                    Positioned(
+                      top: 5,
+                      right: 5,
+                      child: PopupMenuButton<FilterType>(
+                        icon: const Icon(Icons.more_vert, color: Colors.white),
+                        tooltip: 'Zeitraum wählen',
+                        onSelected: (FilterType selected) {
+                          setState(() => _currentFilter = selected);
+                          _saveData();
+                        },
+                        itemBuilder: (BuildContext context) => [
+                          const PopupMenuItem(
+                              value: FilterType.month, child: Text('Monat')),
+                          const PopupMenuItem(
+                              value: FilterType.quarter,
+                              child: Text('Quartal')),
+                          const PopupMenuItem(
+                              value: FilterType.year, child: Text('Jahr')),
+                          const PopupMenuItem(
+                              value: FilterType.total, child: Text('Gesamt')),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
 
-            // Diagramm (scrollt mit)
+            // Diagramm (Nutzt nur gefilterte Daten)
             ChartView(
-              transactions: _transactions,
+              transactions: filteredTxs,
               selectedType: _selectedChartType,
               onTypeChanged: (newType) {
                 setState(() => _selectedChartType = newType);
@@ -278,14 +353,13 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
 
-            // Liste der Buchungen
+            // Liste der Buchungen (Nutzt nur gefilterte Daten)
             TransactionList(
-              transactions: _transactions,
+              transactions: filteredTxs,
               deleteTx: _deleteTransaction,
               onEditTx: (tx) => _openTransactionForm(tx: tx),
             ),
 
-            // Abstand unten für FAB
             const SizedBox(height: 80),
           ],
         ),
@@ -297,10 +371,5 @@ class _HomeScreenState extends State<HomeScreen> {
         icon: const Icon(Icons.add),
       ),
     );
-  }
-
-  void _addCategory(Category c) {
-    setState(() => _categories.add(c));
-    _saveData();
   }
 }
