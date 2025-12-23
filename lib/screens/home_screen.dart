@@ -29,6 +29,8 @@ class _HomeScreenState extends State<HomeScreen> {
   CategorySortOption _currentSort = CategorySortOption.custom;
   FilterType _currentFilter = FilterType.total;
 
+  DateTime _selectedDate = DateTime.now();
+
   @override
   void initState() {
     super.initState();
@@ -37,20 +39,23 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // --- FILTER LOGIK ---
   List<Transaction> get _filteredTransactions {
-    final now = DateTime.now();
     switch (_currentFilter) {
       case FilterType.month:
         return _transactions
-            .where(
-                (tx) => tx.date.year == now.year && tx.date.month == now.month)
+            .where((tx) =>
+                tx.date.year == _selectedDate.year &&
+                tx.date.month == _selectedDate.month)
             .toList();
       case FilterType.year:
-        return _transactions.where((tx) => tx.date.year == now.year).toList();
+        return _transactions
+            .where((tx) => tx.date.year == _selectedDate.year)
+            .toList();
       case FilterType.quarter:
-        int currentQuarter = (now.month - 1) ~/ 3 + 1;
+        int targetQuarter = (_selectedDate.month - 1) ~/ 3 + 1;
         return _transactions.where((tx) {
           int txQuarter = (tx.date.month - 1) ~/ 3 + 1;
-          return tx.date.year == now.year && txQuarter == currentQuarter;
+          return tx.date.year == _selectedDate.year &&
+              txQuarter == targetQuarter;
         }).toList();
       case FilterType.total:
       default:
@@ -58,37 +63,41 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // Kurzer Label für die Ausgaben-Karte
-  String get _filterLabel {
-    switch (_currentFilter) {
-      case FilterType.month:
-        return 'Diesen Monat';
-      case FilterType.quarter:
-        return 'Dieses Quartal';
-      case FilterType.year:
-        return 'Dieses Jahr';
-      case FilterType.total:
-        return 'Gesamt';
-    }
-  }
-
-  // Detaillierter Titel für das Diagramm (z.B. "Dezember 2025")
   String get _detailedFilterLabel {
-    final now = DateTime.now();
     switch (_currentFilter) {
       case FilterType.month:
-        return DateFormat('MMMM yyyy', 'de_DE').format(now);
+        return DateFormat('MMMM yyyy', 'de_DE').format(_selectedDate);
       case FilterType.quarter:
-        int quarter = (now.month - 1) ~/ 3 + 1;
-        return 'Q$quarter ${now.year}';
+        int quarter = (_selectedDate.month - 1) ~/ 3 + 1;
+        return 'Q$quarter ${_selectedDate.year}';
       case FilterType.year:
-        return 'Jahr ${now.year}';
+        return 'Jahr ${_selectedDate.year}';
       case FilterType.total:
         return 'Gesamtübersicht';
     }
   }
 
-  // --- SORTIER-LOGIK ---
+  void _movePeriod(int direction) {
+    setState(() {
+      switch (_currentFilter) {
+        case FilterType.month:
+          _selectedDate =
+              DateTime(_selectedDate.year, _selectedDate.month + direction);
+          break;
+        case FilterType.quarter:
+          _selectedDate = DateTime(
+              _selectedDate.year, _selectedDate.month + (direction * 3));
+          break;
+        case FilterType.year:
+          _selectedDate =
+              DateTime(_selectedDate.year + direction, _selectedDate.month);
+          break;
+        case FilterType.total:
+          break;
+      }
+    });
+  }
+
   List<Category> get _sortedCategories {
     List<Category> sorted = List.from(_categories);
     switch (_currentSort) {
@@ -159,7 +168,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // --- LOGIK FUNKTIONEN ---
+  // --- LOGIK ---
   void _addNewTransaction(String title, double amount, Category category) {
     setState(() {
       _transactions.add(Transaction(
@@ -230,6 +239,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _selectedChartType = ChartType.pie;
       _currentSort = CategorySortOption.custom;
       _currentFilter = FilterType.total;
+      _selectedDate = DateTime.now();
     });
   }
 
@@ -298,12 +308,12 @@ class _HomeScreenState extends State<HomeScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Gesamtsumme Karte
+            // Kompakterer Summen-Bereich
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 16, vertical: 8), // Padding verringert
               child: Card(
-                // Anpassung: Im Dark Mode dunkleres Teal
                 color: isDarkMode
                     ? const Color(0xFF003333)
                     : Theme.of(context).colorScheme.primary,
@@ -313,33 +323,32 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Stack(
                   children: [
                     Padding(
-                      padding: const EdgeInsets.all(20),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 16), // Padding innen verringert
                       child: Center(
-                        child: Column(
-                          children: [
-                            Text('Ausgaben ($_filterLabel)',
-                                style: const TextStyle(
-                                    color: Colors.white70, fontSize: 14)),
-                            const SizedBox(height: 5),
-                            Text(
-                              currencyFormatter.format(totalAmount),
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.bold),
-                            ),
-                          ],
+                        child: Text(
+                          currencyFormatter.format(totalAmount),
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 28, // Schriftgröße leicht reduziert
+                              fontWeight: FontWeight.bold),
                         ),
                       ),
                     ),
                     Positioned(
-                      top: 5,
-                      right: 5,
+                      top: 0,
+                      right: 0,
                       child: PopupMenuButton<FilterType>(
-                        icon: const Icon(Icons.more_vert, color: Colors.white),
-                        tooltip: 'Zeitraum wählen',
+                        padding: EdgeInsets.zero,
+                        icon: const Icon(Icons.more_vert,
+                            color: Colors.white, size: 20),
+                        tooltip: 'Zeitraum',
                         onSelected: (FilterType selected) {
-                          setState(() => _currentFilter = selected);
+                          setState(() {
+                            _currentFilter = selected;
+                            _selectedDate = DateTime.now();
+                          });
                           _saveData();
                         },
                         itemBuilder: (context) => [
@@ -360,18 +369,19 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // Diagramm (Nutzt jetzt periodTitle für den dynamischen Titel)
             ChartView(
               transactions: filteredTxs,
               selectedType: _selectedChartType,
               periodTitle: _detailedFilterLabel,
+              showArrows: _currentFilter != FilterType.total,
+              onPrevious: () => _movePeriod(-1),
+              onNext: () => _movePeriod(1),
               onTypeChanged: (newType) {
                 setState(() => _selectedChartType = newType);
                 _saveData();
               },
             ),
 
-            // Liste der Buchungen
             TransactionList(
               transactions: filteredTxs,
               deleteTx: _deleteTransaction,
@@ -389,5 +399,10 @@ class _HomeScreenState extends State<HomeScreen> {
         icon: const Icon(Icons.add),
       ),
     );
+  }
+
+  void _addCategory(Category c) {
+    setState(() => _categories.add(c));
+    _saveData();
   }
 }

@@ -8,7 +8,10 @@ class ChartView extends StatelessWidget {
   final List<Transaction> transactions;
   final ChartType selectedType;
   final Function(ChartType) onTypeChanged;
-  final String periodTitle; // Neu: Zeigt z.B. "Dezember 2025"
+  final String periodTitle;
+  final VoidCallback onPrevious;
+  final VoidCallback onNext;
+  final bool showArrows;
 
   const ChartView({
     super.key,
@@ -16,6 +19,9 @@ class ChartView extends StatelessWidget {
     required this.selectedType,
     required this.onTypeChanged,
     required this.periodTitle,
+    required this.onPrevious,
+    required this.onNext,
+    required this.showArrows,
   });
 
   Map<String, double> get _groupedData {
@@ -29,87 +35,108 @@ class ChartView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (transactions.isEmpty) return const SizedBox.shrink();
-
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Navigationszeile (Immer sichtbar)
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                // Linker Pfeil
+                if (showArrows)
+                  IconButton(
+                    icon: const Icon(Icons.chevron_left),
+                    onPressed: onPrevious,
+                  )
+                else
+                  const SizedBox(width: 48),
+
+                // Zeitraum-Titel (Immer der Zeitraum, kein "Analyse" mehr)
                 Expanded(
-                  // Expanded sorgt dafür, dass langer Text nicht das Menü wegdrückt
-                  child: Row(
-                    children: [
-                      Icon(
-                        selectedType == ChartType.none
-                            ? Icons.analytics_outlined
-                            : Icons.analytics,
-                        color: Theme.of(context).colorScheme.primary,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          selectedType == ChartType.none
-                              ? 'Analyse (aus)'
-                              : periodTitle,
-                          style: const TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    periodTitle,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),
-                PopupMenuButton<ChartType>(
-                  tooltip: 'Typ ändern',
-                  icon: const Icon(Icons.more_vert, size: 20),
-                  onSelected: onTypeChanged,
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: ChartType.pie,
-                      child: Row(children: [
-                        Icon(Icons.pie_chart_outline, size: 20),
-                        SizedBox(width: 10),
-                        Text('Kuchen')
-                      ]),
-                    ),
-                    const PopupMenuItem(
-                      value: ChartType.bar,
-                      child: Row(children: [
-                        Icon(Icons.bar_chart_outlined, size: 20),
-                        SizedBox(width: 10),
-                        Text('Säulen')
-                      ]),
-                    ),
-                    const PopupMenuItem(
-                      value: ChartType.none,
-                      child: Row(children: [
-                        Icon(Icons.visibility_off_outlined, size: 20),
-                        SizedBox(width: 10),
-                        Text('Ausblenden')
-                      ]),
+
+                // Rechter Pfeil & Auswahlmenü mit Icons
+                Row(
+                  children: [
+                    if (showArrows)
+                      IconButton(
+                        icon: const Icon(Icons.chevron_right),
+                        onPressed: onNext,
+                      ),
+                    PopupMenuButton<ChartType>(
+                      tooltip: 'Typ ändern',
+                      icon: const Icon(Icons.more_vert, size: 20),
+                      onSelected: onTypeChanged,
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: ChartType.pie,
+                          child: Row(
+                            children: [
+                              Icon(Icons.pie_chart_outline, size: 20),
+                              SizedBox(width: 10),
+                              Text('Kuchen'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: ChartType.bar,
+                          child: Row(
+                            children: [
+                              Icon(Icons.bar_chart_outlined, size: 20),
+                              SizedBox(width: 10),
+                              Text('Säulen'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: ChartType.none,
+                          child: Row(
+                            children: [
+                              Icon(Icons.visibility_off_outlined, size: 20),
+                              SizedBox(width: 10),
+                              Text('Ausblenden'),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ],
             ),
+
+            // Diagramm-Bereich (Nur sichtbar, wenn nicht ausgeblendet)
             if (selectedType != ChartType.none)
               Padding(
                 padding: const EdgeInsets.only(top: 10, bottom: 10),
-                child: SizedBox(
-                  height: 150,
-                  child: selectedType == ChartType.pie
-                      ? _buildPieChart()
-                      : _buildBarChart(),
-                ),
+                child: transactions.isNotEmpty
+                    ? SizedBox(
+                        height: 150,
+                        child: selectedType == ChartType.pie
+                            ? _buildPieChart()
+                            : _buildBarChart(),
+                      )
+                    : const SizedBox(
+                        height: 50,
+                        child: Center(
+                          child: Text(
+                            'Keine Daten vorhanden',
+                            style: TextStyle(color: Colors.grey, fontSize: 12),
+                          ),
+                        ),
+                      ),
               ),
           ],
         ),
@@ -117,7 +144,6 @@ class ChartView extends StatelessWidget {
     );
   }
 
-  // (Die restlichen Funktionen _buildPieChart und _buildBarChart bleiben identisch zu vorher)
   Widget _buildPieChart() {
     final data = _groupedData;
     return PieChart(PieChartData(
@@ -147,19 +173,24 @@ class ChartView extends StatelessWidget {
         final category = transactions
             .firstWhere((t) => t.category.name == entry.key)
             .category;
-        return BarChartGroupData(x: index++, barRods: [
-          BarChartRodData(
+        return BarChartGroupData(
+          x: index++,
+          barRods: [
+            BarChartRodData(
               toY: entry.value,
               color: category.color,
               width: 14,
-              borderRadius: BorderRadius.circular(4))
-        ]);
+              borderRadius: BorderRadius.circular(4),
+            )
+          ],
+        );
       }).toList(),
       titlesData: const FlTitlesData(
-          leftTitles: AxisTitles(),
-          rightTitles: AxisTitles(),
-          topTitles: AxisTitles(),
-          bottomTitles: AxisTitles()), // Vereinfacht für die Anzeige
+        leftTitles: AxisTitles(),
+        rightTitles: AxisTitles(),
+        topTitles: AxisTitles(),
+        bottomTitles: AxisTitles(),
+      ),
       gridData: const FlGridData(show: false),
       borderData: FlBorderData(show: false),
     ));
