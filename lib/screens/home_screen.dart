@@ -1,4 +1,4 @@
-import 'dart:convert'; // Für jsonEncode/jsonDecode
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -7,6 +7,7 @@ import '../models/category.dart';
 import '../widgets/transaction_list.dart';
 import '../widgets/new_transaction.dart';
 import '../widgets/main_drawer.dart';
+import '../widgets/chart_view.dart'; // Neu importieren
 import 'category_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -28,33 +29,30 @@ class _HomeScreenState extends State<HomeScreen> {
         color: Colors.blue),
   ];
 
+  // State für den Diagramm-Typ
+  ChartType _selectedChartType = ChartType.pie;
+
   @override
   void initState() {
     super.initState();
-    _loadData(); // Daten beim Start laden
+    _loadData();
   }
 
-  // --- SPEICHER-LOGIK ---
-
+  // --- SPEICHERN & LADEN (Erweitert um ChartType) ---
   Future<void> _saveData() async {
     final prefs = await SharedPreferences.getInstance();
-
-    // Kategorien speichern
-    final categoriesJson =
-        jsonEncode(_categories.map((c) => c.toMap()).toList());
-    await prefs.setString('user_categories', categoriesJson);
-
-    // Transaktionen speichern
-    final transactionsJson =
-        jsonEncode(_transactions.map((t) => t.toMap()).toList());
-    await prefs.setString('user_transactions', transactionsJson);
+    await prefs.setString('user_categories',
+        jsonEncode(_categories.map((c) => c.toMap()).toList()));
+    await prefs.setString('user_transactions',
+        jsonEncode(_transactions.map((t) => t.toMap()).toList()));
+    await prefs.setInt('selected_chart_type', _selectedChartType.index);
   }
 
   Future<void> _loadData() async {
     final prefs = await SharedPreferences.getInstance();
-
     final categoriesRaw = prefs.getString('user_categories');
     final transactionsRaw = prefs.getString('user_transactions');
+    final chartIndex = prefs.getInt('selected_chart_type');
 
     setState(() {
       if (categoriesRaw != null) {
@@ -66,48 +64,29 @@ class _HomeScreenState extends State<HomeScreen> {
         _transactions =
             decoded.map((item) => Transaction.fromMap(item)).toList();
       }
+      if (chartIndex != null) {
+        _selectedChartType = ChartType.values[chartIndex];
+      }
     });
   }
 
-  // --- UI LOGIK ---
-
+  // --- LOGIK ---
   void _addNewTransaction(String title, double amount, Category category) {
-    final newTx = Transaction(
-      id: DateTime.now().toString(),
-      title: title,
-      amount: amount,
-      date: DateTime.now(),
-      category: category,
-    );
-    setState(() => _transactions.add(newTx));
-    _saveData(); // Speichern nach Hinzufügen
+    setState(() {
+      _transactions.add(Transaction(
+        id: DateTime.now().toString(),
+        title: title,
+        amount: amount,
+        date: DateTime.now(),
+        category: category,
+      ));
+    });
+    _saveData();
   }
 
   void _deleteTransaction(String id) {
     setState(() => _transactions.removeWhere((tx) => tx.id == id));
-    _saveData(); // Speichern nach Löschen
-  }
-
-  void _addCategory(Category cat) {
-    setState(() => _categories.add(cat));
-    _saveData(); // Speichern nach Hinzufügen
-  }
-
-  void _deleteCategory(String id) {
-    setState(() => _categories.removeWhere((cat) => cat.id == id));
-    _saveData(); // Speichern nach Löschen
-  }
-
-  // (Rest wie vorher...)
-  void _startAddNewTransaction(BuildContext ctx) {
-    showModalBottomSheet(
-      context: ctx,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) =>
-          NewTransaction(addTx: _addNewTransaction, categories: _categories),
-    );
+    _saveData();
   }
 
   @override
@@ -120,18 +99,23 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Budgety'), centerTitle: true),
       drawer: MainDrawer(
-        onShowCategories: () {
-          Navigator.of(context).push(MaterialPageRoute(
-            builder: (ctx) => CategoryScreen(
-              categories: _categories,
-              onAddCategory: _addCategory,
-              onDeleteCategory: _deleteCategory,
-            ),
-          ));
-        },
+        onShowCategories: () => Navigator.of(context).push(MaterialPageRoute(
+          builder: (ctx) => CategoryScreen(
+            categories: _categories,
+            onAddCategory: (c) {
+              setState(() => _categories.add(c));
+              _saveData();
+            },
+            onDeleteCategory: (id) {
+              setState(() => _categories.removeWhere((c) => c.id == id));
+              _saveData();
+            },
+          ),
+        )),
       ),
       body: Column(
         children: [
+          // Grüne Karte für Gesamtausgaben
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
@@ -155,13 +139,35 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
+
+          // DIAGRAMM-ANSICHT (Wird unter der grünen Karte eingefügt)
+          ChartView(
+            transactions: _transactions,
+            selectedType: _selectedChartType,
+            onTypeChanged: (newType) {
+              setState(() => _selectedChartType = newType);
+              _saveData();
+            },
+          ),
+
+          // Liste der Transaktionen
           Expanded(
-              child: TransactionList(
-                  transactions: _transactions, deleteTx: _deleteTransaction)),
+            child: TransactionList(
+              transactions: _transactions,
+              deleteTx: _deleteTransaction,
+            ),
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _startAddNewTransaction(context),
+        onPressed: () {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            builder: (_) => NewTransaction(
+                addTx: _addNewTransaction, categories: _categories),
+          );
+        },
         label: const Text('Neue Buchung'),
         icon: const Icon(Icons.add),
       ),
