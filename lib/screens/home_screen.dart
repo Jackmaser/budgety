@@ -12,7 +12,6 @@ import '../widgets/chart_view.dart';
 import 'category_screen.dart';
 import 'settings_screen.dart';
 
-// Die verschiedenen Filter-Modi
 enum FilterType { total, month, quarter, year }
 
 class HomeScreen extends StatefulWidget {
@@ -37,7 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadData();
   }
 
-  // --- FILTER LOGIK ---
+  // --- FILTER & SORTIER LOGIK (Unverändert) ---
   List<Transaction> get _filteredTransactions {
     switch (_currentFilter) {
       case FilterType.month:
@@ -168,22 +167,23 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // --- LOGIK ---
-  void _addNewTransaction(String title, double amount, Category category) {
+  // --- LOGIK FUNKTIONEN (Aktualisiert mit Date Parameter) ---
+  void _addNewTransaction(
+      String title, double amount, Category category, DateTime date) {
     setState(() {
       _transactions.add(Transaction(
         id: DateTime.now().toString(),
         title: title,
         amount: amount,
-        date: DateTime.now(),
+        date: date, // Nutzt das gewählte Datum
         category: category,
       ));
     });
     _saveData();
   }
 
-  void _updateTransaction(
-      String id, String title, double amount, Category category) {
+  void _updateTransaction(String id, String title, double amount,
+      Category category, DateTime date) {
     final index = _transactions.indexWhere((tx) => tx.id == id);
     if (index >= 0) {
       setState(() {
@@ -191,7 +191,7 @@ class _HomeScreenState extends State<HomeScreen> {
           id: id,
           title: title,
           amount: amount,
-          date: _transactions[index].date,
+          date: date, // Nutzt das neue Datum
           category: category,
         );
       });
@@ -308,11 +308,9 @@ class _HomeScreenState extends State<HomeScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Kompakterer Summen-Bereich
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 8), // Padding verringert
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Card(
                 color: isDarkMode
                     ? const Color(0xFF003333)
@@ -324,14 +322,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Padding(
                       padding: const EdgeInsets.symmetric(
-                          vertical: 12,
-                          horizontal: 16), // Padding innen verringert
+                          vertical: 12, horizontal: 16),
                       child: Center(
                         child: Text(
                           currencyFormatter.format(totalAmount),
                           style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 28, // Schriftgröße leicht reduziert
+                              fontSize: 28,
                               fontWeight: FontWeight.bold),
                         ),
                       ),
@@ -343,7 +340,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         padding: EdgeInsets.zero,
                         icon: const Icon(Icons.more_vert,
                             color: Colors.white, size: 20),
-                        tooltip: 'Zeitraum',
                         onSelected: (FilterType selected) {
                           setState(() {
                             _currentFilter = selected;
@@ -368,7 +364,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-
             ChartView(
               transactions: filteredTxs,
               selectedType: _selectedChartType,
@@ -381,13 +376,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 _saveData();
               },
             ),
-
             TransactionList(
               transactions: filteredTxs,
               deleteTx: _deleteTransaction,
               onEditTx: (tx) => _openTransactionForm(tx: tx),
             ),
-
             const SizedBox(height: 80),
           ],
         ),
@@ -399,10 +392,5 @@ class _HomeScreenState extends State<HomeScreen> {
         icon: const Icon(Icons.add),
       ),
     );
-  }
-
-  void _addCategory(Category c) {
-    setState(() => _categories.add(c));
-    _saveData();
   }
 }
