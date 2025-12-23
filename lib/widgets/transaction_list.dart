@@ -5,9 +5,14 @@ import '../models/transaction.dart';
 class TransactionList extends StatelessWidget {
   final List<Transaction> transactions;
   final Function(String) deleteTx;
+  final Function(Transaction) onEditTx;
 
-  const TransactionList(
-      {super.key, required this.transactions, required this.deleteTx});
+  const TransactionList({
+    super.key,
+    required this.transactions,
+    required this.deleteTx,
+    required this.onEditTx,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -35,6 +40,10 @@ class TransactionList extends StatelessWidget {
                     children: [
                       Text(currencyFormatter.format(tx.amount),
                           style: const TextStyle(fontWeight: FontWeight.bold)),
+                      IconButton(
+                        icon: const Icon(Icons.edit, color: Colors.blue),
+                        onPressed: () => onEditTx(tx),
+                      ),
                       IconButton(
                           icon: const Icon(Icons.delete, color: Colors.red),
                           onPressed: () => deleteTx(tx.id)),

@@ -4,12 +4,14 @@ import '../models/category.dart';
 class CategoryScreen extends StatefulWidget {
   final List<Category> categories;
   final Function(Category) onAddCategory;
+  final Function(Category) onUpdateCategory;
   final Function(String) onDeleteCategory;
 
   const CategoryScreen({
     super.key,
     required this.categories,
     required this.onAddCategory,
+    required this.onUpdateCategory,
     required this.onDeleteCategory,
   });
 
@@ -19,12 +21,10 @@ class CategoryScreen extends StatefulWidget {
 
 class _CategoryScreenState extends State<CategoryScreen> {
   final _nameController = TextEditingController();
-
-  // Standardwerte für neue Kategorien
   Color _selectedColor = Colors.teal;
   IconData _selectedIcon = Icons.star;
 
-  // Kompakte Farbauswahl
+  // Massiv erweiterte Farbpalette (Material Design Colors)
   final List<Color> _availableColors = [
     Colors.red,
     Colors.pink,
@@ -42,137 +42,140 @@ class _CategoryScreenState extends State<CategoryScreen> {
     Colors.amber,
     Colors.orange,
     Colors.deepOrange,
+    Colors.brown,
+    Colors.grey,
+    Colors.blueGrey,
+    Colors.black,
   ];
 
-  // Kompakte Iconauswahl
+  // Massiv erweiterte Icon-Sammlung sortiert nach Themen
   final List<IconData> _availableIcons = [
-    Icons.restaurant,
-    Icons.directions_car,
-    Icons.movie,
-    Icons.work,
-    Icons.medical_services,
-    Icons.shopping_cart,
-    Icons.home,
-    Icons.flight,
-    Icons.payments,
-    Icons.pets,
-    Icons.school,
-    Icons.fitness_center,
+    // Essen & Trinken
+    Icons.restaurant, Icons.local_cafe, Icons.local_bar, Icons.icecream,
+    Icons.fastfood,
+    // Einkaufen & Finanzen
+    Icons.shopping_cart, Icons.shopping_bag, Icons.payments, Icons.credit_card,
+    Icons.savings, Icons.account_balance,
+    // Transport & Reise
+    Icons.directions_car, Icons.directions_bus, Icons.pedal_bike, Icons.flight,
+    Icons.hotel, Icons.commute,
+    // Haus & Wohnen
+    Icons.home, Icons.lightbulb, Icons.electrical_services, Icons.water_drop,
+    Icons.wifi, Icons.cleaning_services, Icons.inventory,
+    // Freizeit & Hobby
+    Icons.movie, Icons.sports_esports, Icons.fitness_center, Icons.brush,
+    Icons.music_note, Icons.camera_alt, Icons.theater_comedy,
+    // Gesundheit & Vorsorge
+    Icons.medical_services, Icons.healing, Icons.spa, Icons.psychology,
+    // Arbeit & Bildung
+    Icons.work, Icons.laptop, Icons.school, Icons.menu_book,
+    // Sonstiges
+    Icons.pets, Icons.child_friendly, Icons.redeem, Icons.celebration,
+    Icons.star, Icons.build, Icons.checkroom
   ];
 
-  void _showAddCategoryDialog() {
+  void _showCategoryDialog({Category? categoryToEdit}) {
+    if (categoryToEdit != null) {
+      _nameController.text = categoryToEdit.name;
+      _selectedColor = categoryToEdit.color;
+      _selectedIcon = categoryToEdit.icon;
+    } else {
+      _nameController.clear();
+      _selectedColor = Colors.teal;
+      _selectedIcon = Icons.star;
+    }
+
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Neue Kategorie'),
+          title: Text(categoryToEdit != null
+              ? 'Kategorie bearbeiten'
+              : 'Neue Kategorie'),
           content: SizedBox(
-            width: double.maxFinite,
+            width: double.maxFinite, // Nutzt die verfügbare Breite
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   TextField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Name der Kategorie',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // LINKE SEITE: FARBEN
-                      Expanded(
-                        child: Column(
-                          children: [
-                            const Text('Farbe',
-                                style: TextStyle(fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 10),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: _availableColors.map((color) {
-                                final isSelected = _selectedColor == color;
-                                return GestureDetector(
-                                  onTap: () => setDialogState(
-                                      () => _selectedColor = color),
-                                  child: Container(
-                                    width: 30,
-                                    height: 30,
-                                    decoration: BoxDecoration(
-                                      color: color,
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: isSelected
-                                            ? Colors.black
-                                            : Colors.transparent,
-                                        width: 2,
-                                      ),
-                                      boxShadow: isSelected
-                                          ? [
-                                              const BoxShadow(
-                                                  color: Colors.black26,
-                                                  blurRadius: 4)
-                                            ]
-                                          : null,
-                                    ),
-                                    child: isSelected
-                                        ? const Icon(Icons.check,
-                                            size: 16, color: Colors.white)
-                                        : null,
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 15),
-                      // RECHTE SEITE: ICONS
-                      Expanded(
-                        child: Column(
-                          children: [
-                            const Text('Icon',
-                                style: TextStyle(fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 10),
-                            Wrap(
-                              spacing: 5,
-                              runSpacing: 5,
-                              children: _availableIcons.map((icon) {
-                                final isSelected = _selectedIcon == icon;
-                                return GestureDetector(
-                                  onTap: () => setDialogState(
-                                      () => _selectedIcon = icon),
-                                  child: Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: isSelected
-                                          ? _selectedColor.withOpacity(0.2)
+                      controller: _nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Name',
+                        border: OutlineInputBorder(),
+                      )),
+                  const SizedBox(height: 25),
+                  const Text('Farbe wählen',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: _availableColors
+                        .map((color) => GestureDetector(
+                              onTap: () =>
+                                  setDialogState(() => _selectedColor = color),
+                              child: Container(
+                                width: 35,
+                                height: 35,
+                                decoration: BoxDecoration(
+                                    color: color,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: _selectedColor == color
+                                          ? Colors.black
                                           : Colors.transparent,
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(
-                                        color: isSelected
-                                            ? _selectedColor
-                                            : Colors.grey.shade300,
-                                      ),
+                                      width: 2,
                                     ),
-                                    child: Icon(
-                                      icon,
-                                      size: 24,
-                                      color: isSelected
-                                          ? _selectedColor
-                                          : Colors.grey,
-                                    ),
+                                    boxShadow: [
+                                      if (_selectedColor == color)
+                                        const BoxShadow(
+                                            color: Colors.black26,
+                                            blurRadius: 4)
+                                    ]),
+                                child: _selectedColor == color
+                                    ? const Icon(Icons.check,
+                                        size: 20, color: Colors.white)
+                                    : null,
+                              ),
+                            ))
+                        .toList(),
+                  ),
+                  const SizedBox(height: 25),
+                  const Text('Icon wählen',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _availableIcons
+                        .map((icon) => GestureDetector(
+                              onTap: () =>
+                                  setDialogState(() => _selectedIcon = icon),
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: _selectedIcon == icon
+                                      ? _selectedColor.withOpacity(0.2)
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: _selectedIcon == icon
+                                        ? _selectedColor
+                                        : Colors.grey.shade300,
                                   ),
-                                );
-                              }).toList(),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                                ),
+                                child: Icon(
+                                  icon,
+                                  color: _selectedIcon == icon
+                                      ? _selectedColor
+                                      : Colors.grey[600],
+                                  size: 28,
+                                ),
+                              ),
+                            ))
+                        .toList(),
                   ),
                 ],
               ),
@@ -180,21 +183,24 @@ class _CategoryScreenState extends State<CategoryScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Abbrechen'),
-            ),
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Abbrechen')),
             ElevatedButton(
               onPressed: () {
                 if (_nameController.text.isEmpty) return;
-                widget.onAddCategory(Category(
-                  id: DateTime.now().toString(),
+                final newCat = Category(
+                  id: categoryToEdit?.id ?? DateTime.now().toString(),
                   name: _nameController.text,
                   icon: _selectedIcon,
                   color: _selectedColor,
-                ));
-                _nameController.clear();
+                );
+                if (categoryToEdit != null) {
+                  widget.onUpdateCategory(newCat);
+                } else {
+                  widget.onAddCategory(newCat);
+                }
                 Navigator.of(ctx).pop();
-                setState(() {}); // UI der Liste im Hintergrund aktualisieren
+                setState(() {});
               },
               child: const Text('Speichern'),
             ),
@@ -207,9 +213,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Kategorien verwalten'),
-      ),
+      appBar: AppBar(title: const Text('Kategorien verwalten')),
       body: widget.categories.isEmpty
           ? const Center(child: Text('Keine Kategorien vorhanden.'))
           : ListView.builder(
@@ -223,29 +227,31 @@ class _CategoryScreenState extends State<CategoryScreen> {
                       borderRadius: BorderRadius.circular(12)),
                   child: ListTile(
                     leading: CircleAvatar(
-                      backgroundColor: cat.color,
-                      child: Icon(cat.icon, color: Colors.white),
-                    ),
-                    title: Text(
-                      cat.name,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete_outline,
-                          color: Colors.redAccent),
-                      onPressed: () {
-                        widget.onDeleteCategory(cat.id);
-                        setState(() {});
-                      },
+                        backgroundColor: cat.color,
+                        child: Icon(cat.icon, color: Colors.white)),
+                    title: Text(cat.name,
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                            icon: const Icon(Icons.edit, color: Colors.blue),
+                            onPressed: () =>
+                                _showCategoryDialog(categoryToEdit: cat)),
+                        IconButton(
+                            icon: const Icon(Icons.delete_outline,
+                                color: Colors.red),
+                            onPressed: () => widget.onDeleteCategory(cat.id)),
+                      ],
                     ),
                   ),
                 );
               },
             ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddCategoryDialog,
+        onPressed: () => _showCategoryDialog(),
         icon: const Icon(Icons.add),
-        label: const Text('Kategorie'),
+        label: const Text('Neue Kategorie'),
       ),
     );
   }

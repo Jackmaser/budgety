@@ -2,8 +2,13 @@ import 'package:flutter/material.dart';
 
 class MainDrawer extends StatelessWidget {
   final VoidCallback onShowCategories;
+  final VoidCallback onShowSettings; // Neuer Callback
 
-  const MainDrawer({super.key, required this.onShowCategories});
+  const MainDrawer({
+    super.key,
+    required this.onShowCategories,
+    required this.onShowSettings, // Im Konstruktor hinzufügen
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -31,8 +36,17 @@ class MainDrawer extends StatelessWidget {
             leading: const Icon(Icons.category),
             title: const Text('Kategorien verwalten'),
             onTap: () {
-              Navigator.of(context).pop(); // Drawer schließen
-              onShowCategories(); // Callback ausführen
+              Navigator.of(context).pop();
+              onShowCategories();
+            },
+          ),
+          // NEUER MENÜPUNKT
+          ListTile(
+            leading: const Icon(Icons.settings),
+            title: const Text('Einstellungen'),
+            onTap: () {
+              Navigator.of(context).pop();
+              onShowSettings();
             },
           ),
         ],
