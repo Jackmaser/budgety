@@ -27,8 +27,6 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Category> _categories = [];
   ChartType _selectedChartType = ChartType.pie;
   CategorySortOption _currentSort = CategorySortOption.custom;
-
-  // Aktueller Filter-Status
   FilterType _currentFilter = FilterType.total;
 
   @override
@@ -60,6 +58,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // Kurzer Label für die Ausgaben-Karte
   String get _filterLabel {
     switch (_currentFilter) {
       case FilterType.month:
@@ -70,6 +69,22 @@ class _HomeScreenState extends State<HomeScreen> {
         return 'Dieses Jahr';
       case FilterType.total:
         return 'Gesamt';
+    }
+  }
+
+  // Detaillierter Titel für das Diagramm (z.B. "Dezember 2025")
+  String get _detailedFilterLabel {
+    final now = DateTime.now();
+    switch (_currentFilter) {
+      case FilterType.month:
+        return DateFormat('MMMM yyyy', 'de_DE').format(now);
+      case FilterType.quarter:
+        int quarter = (now.month - 1) ~/ 3 + 1;
+        return 'Q$quarter ${now.year}';
+      case FilterType.year:
+        return 'Jahr ${now.year}';
+      case FilterType.total:
+        return 'Gesamtübersicht';
     }
   }
 
@@ -144,7 +159,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // --- TRANSAKTION LOGIK ---
+  // --- LOGIK FUNKTIONEN ---
   void _addNewTransaction(String title, double amount, Category category) {
     setState(() {
       _transactions.add(Transaction(
@@ -237,8 +252,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final currencyFormatter =
         NumberFormat.currency(locale: 'de_DE', symbol: '€');
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    // WICHTIG: Wir nutzen hier die gefilterte Liste für Summe, Chart und Liste
     final filteredTxs = _filteredTransactions;
     double totalAmount =
         filteredTxs.fold(0.0, (sum, item) => sum + item.amount);
@@ -283,24 +298,26 @@ class _HomeScreenState extends State<HomeScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Gesamtsumme Karte mit Filter-Menü
+            // Gesamtsumme Karte
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               child: Card(
-                color: Theme.of(context).colorScheme.primary,
+                // Anpassung: Im Dark Mode dunkleres Teal
+                color: isDarkMode
+                    ? const Color(0xFF003333)
+                    : Theme.of(context).colorScheme.primary,
                 elevation: 4,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(15)),
                 child: Stack(
-                  // Stack erlaubt das Positionieren des Menüs oben rechts
                   children: [
                     Padding(
                       padding: const EdgeInsets.all(20),
                       child: Center(
                         child: Column(
                           children: [
-                            Text('Ausgaben (${_filterLabel})',
+                            Text('Ausgaben ($_filterLabel)',
                                 style: const TextStyle(
                                     color: Colors.white70, fontSize: 14)),
                             const SizedBox(height: 5),
@@ -325,7 +342,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           setState(() => _currentFilter = selected);
                           _saveData();
                         },
-                        itemBuilder: (BuildContext context) => [
+                        itemBuilder: (context) => [
                           const PopupMenuItem(
                               value: FilterType.month, child: Text('Monat')),
                           const PopupMenuItem(
@@ -343,17 +360,18 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // Diagramm (Nutzt nur gefilterte Daten)
+            // Diagramm (Nutzt jetzt periodTitle für den dynamischen Titel)
             ChartView(
               transactions: filteredTxs,
               selectedType: _selectedChartType,
+              periodTitle: _detailedFilterLabel,
               onTypeChanged: (newType) {
                 setState(() => _selectedChartType = newType);
                 _saveData();
               },
             ),
 
-            // Liste der Buchungen (Nutzt nur gefilterte Daten)
+            // Liste der Buchungen
             TransactionList(
               transactions: filteredTxs,
               deleteTx: _deleteTransaction,

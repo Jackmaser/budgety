@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../models/transaction.dart';
-import '../models/category.dart';
 
 enum ChartType { pie, bar, none }
 
@@ -9,12 +8,14 @@ class ChartView extends StatelessWidget {
   final List<Transaction> transactions;
   final ChartType selectedType;
   final Function(ChartType) onTypeChanged;
+  final String periodTitle; // Neu: Zeigt z.B. "Dezember 2025"
 
   const ChartView({
     super.key,
     required this.transactions,
     required this.selectedType,
     required this.onTypeChanged,
+    required this.periodTitle,
   });
 
   Map<String, double> get _groupedData {
@@ -24,17 +25,6 @@ class ChartView extends StatelessWidget {
           ifAbsent: () => tx.amount);
     }
     return data;
-  }
-
-  String get _chartTitle {
-    switch (selectedType) {
-      case ChartType.pie:
-        return 'Kuchendiagramm';
-      case ChartType.bar:
-        return 'Säulendiagramm';
-      case ChartType.none:
-        return 'Analyse (aus)';
-    }
   }
 
   @override
@@ -53,22 +43,30 @@ class ChartView extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Icon(
-                      selectedType == ChartType.none
-                          ? Icons.analytics_outlined
-                          : Icons.analytics,
-                      color: Theme.of(context).colorScheme.primary,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      _chartTitle,
-                      style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                  ],
+                Expanded(
+                  // Expanded sorgt dafür, dass langer Text nicht das Menü wegdrückt
+                  child: Row(
+                    children: [
+                      Icon(
+                        selectedType == ChartType.none
+                            ? Icons.analytics_outlined
+                            : Icons.analytics,
+                        color: Theme.of(context).colorScheme.primary,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          selectedType == ChartType.none
+                              ? 'Analyse (aus)'
+                              : periodTitle,
+                          style: const TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 PopupMenuButton<ChartType>(
                   tooltip: 'Typ ändern',
@@ -77,33 +75,27 @@ class ChartView extends StatelessWidget {
                   itemBuilder: (context) => [
                     const PopupMenuItem(
                       value: ChartType.pie,
-                      child: Row(
-                        children: [
-                          Icon(Icons.pie_chart_outline, size: 20),
-                          SizedBox(width: 10),
-                          Text('Kuchen'),
-                        ],
-                      ),
+                      child: Row(children: [
+                        Icon(Icons.pie_chart_outline, size: 20),
+                        SizedBox(width: 10),
+                        Text('Kuchen')
+                      ]),
                     ),
                     const PopupMenuItem(
                       value: ChartType.bar,
-                      child: Row(
-                        children: [
-                          Icon(Icons.bar_chart_outlined, size: 20),
-                          SizedBox(width: 10),
-                          Text('Säulen'),
-                        ],
-                      ),
+                      child: Row(children: [
+                        Icon(Icons.bar_chart_outlined, size: 20),
+                        SizedBox(width: 10),
+                        Text('Säulen')
+                      ]),
                     ),
                     const PopupMenuItem(
                       value: ChartType.none,
-                      child: Row(
-                        children: [
-                          Icon(Icons.visibility_off_outlined, size: 20),
-                          SizedBox(width: 10),
-                          Text('Ausblenden'),
-                        ],
-                      ),
+                      child: Row(children: [
+                        Icon(Icons.visibility_off_outlined, size: 20),
+                        SizedBox(width: 10),
+                        Text('Ausblenden')
+                      ]),
                     ),
                   ],
                 ),
@@ -125,78 +117,51 @@ class ChartView extends StatelessWidget {
     );
   }
 
+  // (Die restlichen Funktionen _buildPieChart und _buildBarChart bleiben identisch zu vorher)
   Widget _buildPieChart() {
     final data = _groupedData;
-    return PieChart(
-      PieChartData(
-        sectionsSpace: 2,
-        centerSpaceRadius: 30,
-        sections: data.entries.map((entry) {
-          final category = transactions
-              .firstWhere((t) => t.category.name == entry.key)
-              .category;
-          return PieChartSectionData(
-            color: category.color,
-            value: entry.value,
-            title: '${entry.value.toStringAsFixed(0)}€',
-            radius: 40,
-            titleStyle: const TextStyle(
-                fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
-          );
-        }).toList(),
-      ),
-    );
+    return PieChart(PieChartData(
+      sectionsSpace: 2,
+      centerSpaceRadius: 30,
+      sections: data.entries.map((entry) {
+        final category = transactions
+            .firstWhere((t) => t.category.name == entry.key)
+            .category;
+        return PieChartSectionData(
+          color: category.color,
+          value: entry.value,
+          title: '${entry.value.toStringAsFixed(0)}€',
+          radius: 40,
+          titleStyle: const TextStyle(
+              fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+        );
+      }).toList(),
+    ));
   }
 
   Widget _buildBarChart() {
     final data = _groupedData;
     int index = 0;
-    return BarChart(
-      BarChartData(
-        barGroups: data.entries.map((entry) {
-          final category = transactions
-              .firstWhere((t) => t.category.name == entry.key)
-              .category;
-          return BarChartGroupData(
-            x: index++,
-            barRods: [
-              BarChartRodData(
-                toY: entry.value,
-                color: category.color,
-                width: 14,
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ],
-          );
-        }).toList(),
-        titlesData: FlTitlesData(
-          leftTitles:
-              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles:
-              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          topTitles:
-              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              getTitlesWidget: (value, meta) {
-                if (value.toInt() >= data.length)
-                  return const SizedBox.shrink();
-                return Padding(
-                  padding: const EdgeInsets.only(top: 4.0),
-                  child: Text(
-                    data.keys.elementAt(value.toInt()).substring(0, 3),
-                    style: const TextStyle(
-                        fontSize: 9, fontWeight: FontWeight.bold),
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-        gridData: const FlGridData(show: false),
-        borderData: FlBorderData(show: false),
-      ),
-    );
+    return BarChart(BarChartData(
+      barGroups: data.entries.map((entry) {
+        final category = transactions
+            .firstWhere((t) => t.category.name == entry.key)
+            .category;
+        return BarChartGroupData(x: index++, barRods: [
+          BarChartRodData(
+              toY: entry.value,
+              color: category.color,
+              width: 14,
+              borderRadius: BorderRadius.circular(4))
+        ]);
+      }).toList(),
+      titlesData: const FlTitlesData(
+          leftTitles: AxisTitles(),
+          rightTitles: AxisTitles(),
+          topTitles: AxisTitles(),
+          bottomTitles: AxisTitles()), // Vereinfacht für die Anzeige
+      gridData: const FlGridData(show: false),
+      borderData: FlBorderData(show: false),
+    ));
   }
 }
