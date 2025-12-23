@@ -1,6 +1,7 @@
 name: budgety
 description: "Eine Haushaltsbuch-App zur Verwaltung von Einnahmen und Ausgaben."
 publish_to: 'none'
+
 version: 1.0.0+1
 
 environment:
@@ -9,9 +10,18 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  intl: ^0.19.0
-  flutter_colorpicker: ^1.1.0
+  
+  # Sprachunterstützung für deutsche Texte im Kalender etc.
+  flutter_localizations:
+    sdk: flutter
+
+  # Auf Version 0.20.2 aktualisiert, passend zum aktuellen Flutter SDK
+  intl: ^0.20.2
+  
+  # Persistente Speicherung
   shared_preferences: ^2.3.5
+  
+  # Diagramme
   fl_chart: ^0.70.0
 
 dev_dependencies:

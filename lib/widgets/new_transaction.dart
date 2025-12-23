@@ -25,7 +25,7 @@ class _NewTransactionState extends State<NewTransaction> {
   final _titleController = TextEditingController();
   final _amountController = TextEditingController();
   Category? _selectedCategory;
-  DateTime _selectedDate = DateTime.now(); // Standard: Heute
+  DateTime _selectedDate = DateTime.now();
 
   @override
   void initState() {
@@ -44,14 +44,16 @@ class _NewTransactionState extends State<NewTransaction> {
     }
   }
 
-  // Öffnet den Flutter DatePicker
   void _presentDatePicker() {
     showDatePicker(
       context: context,
       initialDate: _selectedDate,
       firstDate: DateTime(2020),
-      lastDate: DateTime.now()
-          .add(const Duration(days: 365)), // Bis zu 1 Jahr im Voraus
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      // Erzwingt das deutsche Format direkt im Picker
+      locale: const Locale('de', 'DE'),
+      // Hilft bei der Auswahl von Jahr/Monat (Dropdown-Ersatz in Material 3)
+      initialDatePickerMode: DatePickerMode.day,
     ).then((pickedDate) {
       if (pickedDate == null) return;
       setState(() {
@@ -62,8 +64,8 @@ class _NewTransactionState extends State<NewTransaction> {
 
   void _submitData() {
     final title = _titleController.text;
-    final amount =
-        double.tryParse(_amountController.text.replaceAll(',', '.')) ?? 0;
+    final amountText = _amountController.text.replaceAll(',', '.');
+    final amount = double.tryParse(amountText) ?? 0;
 
     if (title.isEmpty || amount <= 0 || _selectedCategory == null) return;
 
@@ -73,7 +75,6 @@ class _NewTransactionState extends State<NewTransaction> {
     } else {
       widget.addTx(title, amount, _selectedCategory!, _selectedDate);
     }
-
     Navigator.of(context).pop();
   }
 
@@ -97,31 +98,37 @@ class _NewTransactionState extends State<NewTransaction> {
           TextField(
             controller: _titleController,
             decoration: const InputDecoration(labelText: 'Titel'),
-            autofocus: true,
           ),
           TextField(
             controller: _amountController,
             decoration: const InputDecoration(labelText: 'Betrag'),
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
           ),
-          const SizedBox(height: 20),
-          // DATUMSAUSWAHL ZEILE
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Datum: ${DateFormat('dd.MM.yyyy').format(_selectedDate)}',
-                  style: const TextStyle(fontSize: 16),
-                ),
+          const SizedBox(height: 15),
+          // DATUMS-ANZEIGE
+          InkWell(
+            onTap: _presentDatePicker,
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade400),
+                borderRadius: BorderRadius.circular(8),
               ),
-              TextButton(
-                onPressed: _presentDatePicker,
-                child: const Text('Datum wählen',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
+              child: Row(
+                children: [
+                  const Icon(Icons.calendar_month, color: Colors.teal),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Datum: ${DateFormat('dd.MM.yyyy').format(_selectedDate)}',
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  const Spacer(),
+                  const Icon(Icons.arrow_drop_down),
+                ],
               ),
-            ],
+            ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 15),
           DropdownButton<Category>(
             value: _selectedCategory,
             isExpanded: true,
