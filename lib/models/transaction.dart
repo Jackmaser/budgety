@@ -13,7 +13,7 @@ class Transaction {
     required this.amount,
     required this.date,
     required this.category,
-  }); //test
+  });
 
   Map<String, dynamic> toMap() {
     return {
